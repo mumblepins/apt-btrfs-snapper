@@ -1,3 +1,9 @@
+apt-btrfs-snapper (0.4.1) xenial; urgency=medium
+
+  * Fixed pep8 and pyflakes tests
+
+ -- Daniel Sullivan <mumblepins@gmail.com>  Wed, 27 Sep 2017 11:58:20 -0500
+
 apt-btrfs-snapper (0.4.0) trusty; urgency=medium
 
   * Added pre and post methods for use with apt-get

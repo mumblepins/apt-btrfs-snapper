@@ -1,8 +1,11 @@
-This package was debianized by Kyle Agronick <agronick@gmail.com>
-on 3 Jun 2015 21:46:41 +0100.
+This package was debianized by Daniel Sullivan <mumblepins@gmail.com>
+on 27 Sep 2017 11:58:20 -0500.
 
-It was downloaded via bzr from
-https://launchpad.net/apt-btrfs-snapper
+It was downloaded via git from
+https://github.com/mumblepins/apt-btrfs-snapper
+
+Previously it was downloaded via bzr from
+https://launchpad.net/apt-btrfs-snapshot
 and converted for use with snapper.
 
 Upstream Author: Michael Vogt <michael.vogt@ubuntu.com>

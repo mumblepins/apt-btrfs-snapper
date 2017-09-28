@@ -1,0 +1,18 @@
+version: 2
+jobs:
+    build:
+        docker:
+            - image: mumblepins/circleci-dev:xenial-debuild
+        working_directory: /tmp
+        steps:
+            - checkout
+            - run: |
+                set -x
+                apt update
+                apt install -y devscripts equivs
+                mk-build-deps -i -t "apt --no-install-recommends -y"
+                debuild -us -uc
+                mkdir /tmp/artifacts
+                cp ../apt-btrfs-snapper_* /tmp/artifacts/
+            - store_artifacts:
+                path: /tmp/artifacts

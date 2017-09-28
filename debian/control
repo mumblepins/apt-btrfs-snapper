@@ -1,7 +1,7 @@
 Source: apt-btrfs-snapper
 Section: admin
 Priority: optional
-Maintainer: Kyle Agronick <agronick@gmail.com>
+Maintainer: Daniel Sullivan <mumblepins@gmail.com>
 Build-Depends: debhelper (>= 7.0.50~),
                python3-all,
                python3-distutils-extra,
