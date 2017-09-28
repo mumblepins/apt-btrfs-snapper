@@ -44,53 +44,55 @@ class LowLevelCommands(object):
     """
     CLEANUP_MODE = 'number'
 
-    def btrfs_snapshot_list(self):
-        ret = subprocess.check_output(["snapper", "list", "-t", "pre-post"],
-                                      universal_newlines=True)
-        ret = ret.split("\n")
-        i = 0
-        items = []
-        for item in ret:
-            i = 1 + i
-            if i < 3:
-                continue
-            split = item.split("|")
-            if len(split) > 4:
-
-                row = {
-                    'name': split[4].strip(),
-                    'id': split[1].strip(),
-                    'type': 'pre',
-                    'cleanup': self.CLEANUP_MODE,
-                    'user_data': split[5].strip(),
-                    'date': split[2].strip(),
-                    'text': item,
-                    'pre_id': split[0].strip()
-                }
-                if row['name'].startswith(AptBtrfsSnapper.SNAP_PREFIX):
-                    items.append(row)
-        return items
-
-    def btrfs_snapshot_list_pre_post(self):
+    def _btrfs_snapshot_list(self, return_split=True, max_fields=5):
         ret = subprocess.check_output(["snapper", "list", "-t", "pre-post"],
                                       universal_newlines=True)
         lines = ret.split("\n")
         lines = iter(lines)
         newlines = []
+        headerlines = []
 
-        # Header line
-        fields = next(lines).split('|')
-        line = '|'.join(fields[0:5])
-        cut_len = len(line)
-        newlines.append(line.replace("Description", "Name"))
+        # Include Header
+        fields = next(lines).split('|')[0:max_fields]
+        header = '|'.join(fields)
+        cut_len = len(header)
+        headerlines.append(header.replace("Description", "Name"))
 
         # Separator line
-        newlines.append(next(lines)[0:cut_len])
+        headerlines.append(next(lines)[0:cut_len])
 
         for line in lines:
-            if AptBtrfsSnapper.SNAP_PREFIX in line:
-                newlines.append(line[0:cut_len])
-        return "\n".join(newlines)
+            if AptBtrfsSnapper.SNAP_PREFIX not in line:
+                continue
+            text = line[0:cut_len]
+
+            if not return_split:
+                newlines.append(text)
+                continue
+
+            split = [a.strip() for a in line.split("|")]
+            if len(split) < 6:
+                continue
+            row = {
+                'name': split[4],
+                'id': split[1],
+                'type': 'pre',
+                'cleanup': self.CLEANUP_MODE,
+                'user_data': split[5],
+                'date': split[2],
+                'text': text,
+                'pre_id': split[0]
+            }
+            newlines.append(row)
+        return headerlines, newlines
+
+    def btrfs_snapshot_list(self):
+        headerlines, items = self._btrfs_snapshot_list(True)
+        return headerlines, items
+
+    def btrfs_snapshot_list_pre_post(self):
+        headerlines, newlines = self._btrfs_snapshot_list(False)
+        return "\n".join(headerlines + newlines)
 
     def btrfs_subvolume_snapshot(self, description, ctype, pre_id=-1):
         arguments = ["snapper", "create", "-d", description, "-c",
@@ -210,7 +212,7 @@ class AptBtrfsSnapper(object):
         if older_than == 0:
             older_than = time.time()
 
-        items = self.commands.btrfs_snapshot_list()
+        headerlines, items = self.commands.btrfs_snapshot_list()
         for item in items:
             mtime = time.mktime(
                 time.strptime(item['date'], self.SNAPPER_TIME))
@@ -224,7 +226,7 @@ class AptBtrfsSnapper(object):
         for item in s_list:
             items.append(item['text'])
 
-        return items
+        return headerlines + items
 
     def print_btrfs_root_snapshots(self):
         print(
@@ -303,7 +305,7 @@ class AptBtrfsSnapper(object):
             int(snapshot_name)
             sid = snapshot_name
         except ValueError:
-            slist = self.commands.btrfs_snapshot_list()
+            _, slist = self.commands.btrfs_snapshot_list()
             for item in slist:
                 if item['name'].strip() == snapshot_name:
                     sid = item['id']
