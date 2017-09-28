@@ -19,19 +19,13 @@
 
 
 import argparse
-import datetime
+import gettext
 import logging
 import os
-import string
-import subprocess
 import sys
-import tempfile
-
-import gettext
 from gettext import gettext as _
 
 from apt_btrfs_snapper import AptBtrfsSnapper
-
 
 if __name__ == "__main__":
 
@@ -43,7 +37,7 @@ if __name__ == "__main__":
     parser.add_argument("--debug", action="store_true", default=False,
                         help="enable debug output")
     subparser = parser.add_subparsers(title="Commands")
-    
+
     # supported
     command = subparser.add_parser(
         "supported", help=_("Print if snapshots are supported"))
@@ -83,15 +77,16 @@ if __name__ == "__main__":
     command = subparser.add_parser(
         "delete-older-than", help=_("Delete snapshots older than N days"))
     command.add_argument("time")
-    #diff
+    # diff
     command = subparser.add_parser(
         "diff", help=_("Show what was changed between a snapshot and now"))
     command.set_defaults(command="diff")
-    command.add_argument("presnapshot") 
-    command.add_argument("postsnapshot")  
-    #userdata
+    command.add_argument("presnapshot")
+    command.add_argument("postsnapshot")
+    # userdata
     command = subparser.add_parser(
-        "userdata", help=_("To be used by the system to add the packages installed to the snapshot"))
+        "userdata", help=_("To be used by the system to add the packages "
+                           "installed to the snapshot"))
     command.set_defaults(command="userdata")
 
     # parse args
@@ -102,7 +97,6 @@ if __name__ == "__main__":
         logging.basicConfig(level=logging.DEBUG)
     else:
         logging.basicConfig(level=logging.INFO)
- 
 
     if os.getuid() != 0:
         print(_("Sorry, you need to be root to run this program"))
@@ -110,16 +104,16 @@ if __name__ == "__main__":
 
     apt_btrfs = AptBtrfsSnapper()
     if not apt_btrfs.snapshots_supported():
-        print(_("Sorry, your system lacks support for the snapshot feature"))
-        sys.exit(1) 
-    try:   
-        res = False 
+        print(_("The system does not support apt-btrfs-snapper"))
+        sys.exit(1)
+    res = False
+    try:
         if args.command == "supported":
             res = apt_btrfs.snapshots_supported()
             if res:
                 print(_("Supported"))
             else:
-                print(_("Not supported"))  
+                print(_("Not supported"))
         elif args.command == "snapshot":
             res = apt_btrfs.create_btrfs_root_snapshot()
         elif args.command == "pre-snap":
@@ -142,16 +136,11 @@ if __name__ == "__main__":
             res = apt_btrfs.update_installed_packages()
         else:
             print(_("ERROR: Unhandled command: '%s'") % args.command)
-    except AttributeError: 
-        print(parser.print_help()) 
+    except AttributeError as e:
+        print(parser.print_help())
 
-    # return the right exit code
+        # return the right exit code
     if res:
         sys.exit(0)
     else:
         sys.exit(1)
-
-
-
-
-

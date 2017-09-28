@@ -23,6 +23,7 @@ import os
 import subprocess
 import sys
 import time
+from distutils.spawn import find_executable
 
 
 class AptBtrfsSnapperError(Exception):
@@ -74,22 +75,29 @@ class LowLevelCommands(object):
         ret = subprocess.check_output(["snapper", "list", "-t", "pre-post"],
                                       universal_newlines=True)
         lines = ret.split("\n")
-        i = 0
-        out = ""
-        for line in lines:
-            if i < 1:
-                out += line[0:117].replace("Description", "Name") + "\n"
-                i += 1
-            elif AptBtrfsSnapper.SNAP_PREFIX in line:
-                out += line[0:117] + "\n"
-        return out
+        lines = iter(lines)
+        newlines = []
 
-    def btrfs_subvolume_snapshot(self, description, ctype, pre_id="-1"):
+        # Header line
+        fields = next(lines).split('|')
+        line = '|'.join(fields[0:5])
+        cut_len = len(line)
+        newlines.append(line.replace("Description", "Name"))
+
+        # Separator line
+        newlines.append(next(lines)[0:cut_len])
+
+        for line in lines:
+            if AptBtrfsSnapper.SNAP_PREFIX in line:
+                newlines.append(line[0:cut_len])
+        return "\n".join(newlines)
+
+    def btrfs_subvolume_snapshot(self, description, ctype, pre_id=-1):
         arguments = ["snapper", "create", "-d", description, "-c",
                      self.CLEANUP_MODE, "--print-number", "-t", ctype]
         if pre_id != -1:
             arguments.append("--pre-number")
-            arguments.append(pre_id)
+            arguments.append("{}".format(pre_id))
         ret = subprocess.check_output(arguments, universal_newlines=True)
         return ret.strip()
 
@@ -107,7 +115,7 @@ class LowLevelCommands(object):
             ret = subprocess.check_output(
                 ["snapper", "status", sid + ".." + id2],
                 universal_newlines=True)
-        except:
+        except subprocess.CalledProcessError:
             print("The snapshots you supplied des not appear to exist.")
         return ret
 
@@ -139,7 +147,7 @@ class AptBtrfsSnapper(object):
             configured on the root volume
         """
         # check for the helper binary
-        if not os.path.exists("/usr/bin/snapper"):
+        if not find_executable("snapper"):
             return False
 
         DIR = '/etc/snapper/configs'
@@ -167,8 +175,9 @@ class AptBtrfsSnapper(object):
             id_file = open(self.PRE_ID_FILE, 'r')
             existing = id_file.read()
             if existing:
-                self.delete_snapshot(existing.strip())
-                print("Deleted orphaned snapshot " + existing.strip())
+                existing = int(existing.strip())
+                self.delete_snapshot(existing)
+                print("Deleted orphaned snapshot %d" % existing)
             id_file.close()
             os.remove(self.PRE_ID_FILE)
 
@@ -186,7 +195,7 @@ class AptBtrfsSnapper(object):
             print("The pre snapshot ID was not found")
             return False
 
-        sid = id_file.read()
+        sid = int(id_file.read().strip())
         sid = self.create_btrfs_root_snapshot(additional_prefix, "post", sid)
         os.remove(id_file.name)
         id_file.close()
@@ -197,7 +206,7 @@ class AptBtrfsSnapper(object):
             If "older_then" is given (in unixtime format) it will only include
             snapshots that are older then the given date)
         """
-        l = []
+        s_list = []
         if older_than == 0:
             older_than = time.time()
 
@@ -206,13 +215,13 @@ class AptBtrfsSnapper(object):
             mtime = time.mktime(
                 time.strptime(item['date'], self.SNAPPER_TIME))
             if (older_than > mtime):
-                l.append(item['id'] if only_id else item)
+                s_list.append(item['id'] if only_id else item)
 
         if only_id:
-            return l
+            return s_list
 
         items = []
-        for item in l:
+        for item in s_list:
             items.append(item['text'])
 
         return items
