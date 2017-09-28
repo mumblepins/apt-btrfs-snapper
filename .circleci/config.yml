@@ -20,7 +20,7 @@ jobs:
     build-xenial:
         docker:
             - image: mumblepins/circleci-dev:xenial-debuild
-        working_directory: /tmp
+        working_directory: /tmp/build
         steps:
             - checkout
             - run: |
@@ -36,7 +36,7 @@ jobs:
     build-zesty:
         docker:
             - image: mumblepins/circleci-dev:zesty-debuild
-        working_directory: /tmp
+        working_directory: /tmp/build
         steps:
             - checkout
             - run: |
